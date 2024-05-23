@@ -110,7 +110,10 @@ class SocketClient
         return $url . "/{$clientId}";
     }
 
-    public function send(string $message, string $clientId): bool
+    /**
+     * @return false|string
+     */
+    public function send(string $message, string $clientId)
     {
         $url = $this->buildUrl($clientId);
 
