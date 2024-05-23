@@ -28,7 +28,7 @@ class SocketV2 implements LogHandlerInterface
         // 日志头渲染回调
         'format_head'           => null,
         // curl opt
-        'curl_opt'              => [
+        'curl_opts'             => [
             CURLOPT_CONNECTTIMEOUT => 1,
             CURLOPT_TIMEOUT        => 10,
         ],
@@ -66,7 +66,7 @@ class SocketV2 implements LogHandlerInterface
         }
 
         $this->client = SocketClient::fromUri($this->config['uri']);
-        $this->client->setCurlOptions($this->config['curl_opt']);
+        $this->client->setCurlOptions($this->config['curl_opts']);
         $this->client->setEnableCompress($this->config['compress'] ?? false);
         $this->client->setE2eEncryptionKey($this->config['e2e_encryption_key'] ?? '');
         $this->client->setParamsMethod($this->config['client_id_send_method'] ?? 'path');
