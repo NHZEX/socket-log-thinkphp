@@ -32,6 +32,7 @@ class SocketClient
 
     protected bool $enableCompress = false;
     protected string $e2eEncryptionKey = '';
+    protected string $paramsMethod = 'path';
     protected ?string $loggerFile = null;
 
     public function __construct(string $protocol, string $host, int $port, string $path)
@@ -85,6 +86,19 @@ class SocketClient
         $this->e2eEncryptionKey = trim($e2eEncryptionKey);
     }
 
+    public function getParamsMethod(): string
+    {
+        return $this->paramsMethod;
+    }
+
+    public function setParamsMethod(string $paramsMethod): void
+    {
+        if (!in_array($paramsMethod, ['path', 'query', 'header'], true)) {
+            throw new \InvalidArgumentException("Invalid parameter paramsMethod: {$paramsMethod}");
+        }
+        $this->paramsMethod = $paramsMethod;
+    }
+
     public function getCurlOptions(): array
     {
         return $this->curlOptions;
@@ -107,7 +121,14 @@ class SocketClient
         if ($this->path) {
             $url .= "/{$this->path}";
         }
-        return $url . "/{$clientId}";
+
+        return $this->getParamsMethod() === 'path'
+            ? ($url . "/{$clientId}")
+            : (
+            $this->getParamsMethod() === 'query'
+                ? ($url . "?clientId={$clientId}")
+                : $url
+            );
     }
 
     /**
@@ -124,6 +145,9 @@ class SocketClient
         $headers = [
             "Content-Type: {$contentType}",
         ];
+        if ($this->getParamsMethod() === 'header') {
+            $headers[] = "X-Socket-Log-ClientId: {$clientId}";
+        }
 
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_POST, true);

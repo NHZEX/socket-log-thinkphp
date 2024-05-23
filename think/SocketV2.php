@@ -1,5 +1,5 @@
 <?php
-declare (strict_types = 1);
+declare (strict_types=1);
 
 namespace think\log\driver;
 
@@ -12,28 +12,30 @@ class SocketV2 implements LogHandlerInterface
 {
     protected array $config = [
         // socket 服务器连接地址
-        'uri'                 => 'http://localhost:1116',
+        'uri'                   => 'http://localhost:1116',
         // 是否显示加载的文件列表
-        'show_included_files' => false,
-        // 日志强制记录到配置的client_id
-        'force_client_ids'    => [],
-        // 限制允许读取日志的client_id
-        'allow_client_ids'    => [],
+        'show_included_files'   => false,
+        // 日志强制记录到配置的 client_id
+        'force_client_ids'      => [],
+        // 限制允许读取日志的 client_id
+        'allow_client_ids'      => [],
+        // client_id 发送方法: path, query, header
+        'client_id_send_method' => 'path',
         // 调试开关
-        'debug'               => false,
+        'debug'                 => false,
         // 输出到浏览器时默认展开的日志级别
-        'expand_level'        => ['debug'],
+        'expand_level'          => ['debug'],
         // 日志头渲染回调
-        'format_head'         => null,
+        'format_head'           => null,
         // curl opt
-        'curl_opt'            => [
+        'curl_opt'              => [
             CURLOPT_CONNECTTIMEOUT => 1,
             CURLOPT_TIMEOUT        => 10,
         ],
         // 压缩传输
-        'compress'            => false,
+        'compress'              => false,
         // 端到端密钥
-        'e2e_encryption_key'  => '',
+        'e2e_encryption_key'    => '',
     ];
 
     protected array $css = [
@@ -48,7 +50,7 @@ class SocketV2 implements LogHandlerInterface
 
     protected $clientArg = [];
 
-    protected App $app;
+    protected App          $app;
     protected SocketClient $client;
 
     public function __construct(App $app, array $config = [])
@@ -67,6 +69,7 @@ class SocketV2 implements LogHandlerInterface
         $this->client->setCurlOptions($this->config['curl_opt']);
         $this->client->setEnableCompress($this->config['compress'] ?? false);
         $this->client->setE2eEncryptionKey($this->config['e2e_encryption_key'] ?? '');
+        $this->client->setParamsMethod($this->config['client_id_send_method'] ?? 'path');
     }
 
     public function save(array $log = []): bool
