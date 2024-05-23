@@ -47,9 +47,10 @@ class SocketClient
             throw new \InvalidArgumentException("invalid port value: {$port}");
         }
 
-        $this->host = trim($host, " \n\r\t\v\0/");
-        $this->port = $port;
-        $this->path = trim($path, " \n\r\t\v\0/");
+        $this->protocol = $protocol;
+        $this->host     = trim($host, " \n\r\t\v\0/");
+        $this->port     = $port;
+        $this->path     = trim($path, " \n\r\t\v\0/");
     }
 
     public static function fromUri(string $uri): self
@@ -57,10 +58,10 @@ class SocketClient
         $arr = parse_url($uri);
 
         return new SocketClient(
-            $arr['scheme'],
+            $arr['scheme'] ?? 'http',
             $arr['host'],
-            (int) $arr['port'],
-            $arr['path'],
+            (int) ($arr['port'] ?? 0),
+            $arr['path'] ?? '',
         );
     }
 
