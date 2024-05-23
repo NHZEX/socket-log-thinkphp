@@ -30,6 +30,8 @@ class SocketClient
         CURLOPT_PROXYPASSWORD,
     ];
 
+    protected bool $enableCompress = false;
+    protected string $e2eEncryptionKey = '';
     protected ?string $loggerFile = null;
 
     public function __construct(string $protocol, string $host, int $port, string $path)
@@ -60,6 +62,26 @@ class SocketClient
             (int) $arr['port'],
             $arr['path'],
         );
+    }
+
+    public function isEnableCompress(): bool
+    {
+        return $this->enableCompress;
+    }
+
+    public function setEnableCompress(bool $enableCompress): void
+    {
+        $this->enableCompress = $enableCompress;
+    }
+
+    public function getE2eEncryptionKey(): string
+    {
+        return $this->e2eEncryptionKey;
+    }
+
+    public function setE2eEncryptionKey(string $e2eEncryptionKey): void
+    {
+        $this->e2eEncryptionKey = trim($e2eEncryptionKey);
     }
 
     public function getCurlOptions(): array
@@ -126,10 +148,7 @@ class SocketClient
 
     protected function createPayload(string $message, string $clientId): array
     {
-        $isCompress = $this->config['compress'] ?? false;
-        $e2eEncryptionKey = $this->config['e2e_encryption_key'] ?? null;
-
-        $needCompress = $isCompress && strlen($message) > 128;
+        $needCompress = $this->isEnableCompress() && strlen($message) > 128;
 
         if (\extension_loaded('zlib') && $needCompress) {
             $message = zlib_encode($message, ZLIB_ENCODING_DEFLATE);
@@ -137,6 +156,8 @@ class SocketClient
         } else {
             $contentType = 'application/json';
         }
+
+        $e2eEncryptionKey = $this->e2eEncryptionKey;
 
         if (\extension_loaded('openssl') && $e2eEncryptionKey && strlen($e2eEncryptionKey) >= 8) {
             $add = hash('sha256', "SL-E2E_{$clientId}", true);

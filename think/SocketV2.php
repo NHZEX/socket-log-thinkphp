@@ -30,6 +30,10 @@ class SocketV2 implements LogHandlerInterface
             CURLOPT_CONNECTTIMEOUT => 1,
             CURLOPT_TIMEOUT        => 10,
         ],
+        // 压缩传输
+        'compress'            => false,
+        // 端到端密钥
+        'e2e_encryption_key'  => '',
     ];
 
     protected array $css = [
@@ -61,6 +65,8 @@ class SocketV2 implements LogHandlerInterface
 
         $this->client = SocketClient::fromUri($this->config['uri']);
         $this->client->setCurlOptions($this->config['curl_opt']);
+        $this->client->setEnableCompress($this->config['compress'] ?? false);
+        $this->client->setE2eEncryptionKey($this->config['e2e_encryption_key'] ?? '');
     }
 
     public function save(array $log = []): bool
