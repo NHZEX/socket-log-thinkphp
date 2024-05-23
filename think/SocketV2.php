@@ -36,6 +36,8 @@ class SocketV2 implements LogHandlerInterface
         'compress'              => false,
         // 端到端密钥
         'e2e_encryption_key'    => '',
+        // 发送异常日志（必须确保目录可写）
+        'socket_error_log' => null,
     ];
 
     protected array $css = [
@@ -70,6 +72,7 @@ class SocketV2 implements LogHandlerInterface
         $this->client->setEnableCompress($this->config['compress'] ?? false);
         $this->client->setE2eEncryptionKey($this->config['e2e_encryption_key'] ?? '');
         $this->client->setParamsMethod($this->config['client_id_send_method'] ?? 'path');
+        $this->client->setLogFilePath($this->config['socket_error_log'] ?? null);
     }
 
     public function save(array $log = []): bool

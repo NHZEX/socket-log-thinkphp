@@ -66,6 +66,21 @@ class SocketClient
         );
     }
 
+    public function setLogFilePath(string $filepath)
+    {
+        if (empty($filepath)) {
+            $this->loggerFile = null;
+            return;
+        }
+
+        $dir = dirname($filepath);
+        if ($dir && (!is_dir($dir) || !is_writable($dir))) {
+            return;
+        }
+
+        $this->loggerFile = $filepath;
+    }
+
     public function isEnableCompress(): bool
     {
         return $this->enableCompress;
