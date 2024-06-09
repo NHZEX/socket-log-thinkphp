@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Zxin\SocketLog;
@@ -140,7 +141,7 @@ class SocketClient
         return $this->getParamsMethod() === 'path'
             ? ($url . "/{$clientId}")
             : (
-            $this->getParamsMethod() === 'query'
+                $this->getParamsMethod() === 'query'
                 ? ($url . "?clientId={$clientId}")
                 : $url
             );

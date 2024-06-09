@@ -13,6 +13,9 @@
         "ext-json": "*",
         "topthink/framework": "^6.0.0 | ^8.0.0"
     },
+    "require-dev": {
+        "php-cs-fixer/shim": "^3.58"
+    },
     "suggest": {
         "ext-openssl": "*",
         "ext-zlib": "*"
