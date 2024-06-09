@@ -50,7 +50,7 @@ class SocketV2 implements LogHandlerInterface
 
     protected array $allowForceClientIds = []; //配置强制推送且被授权的client_id
 
-    protected $clientArg = [];
+    private array $clientArg = [];
 
     protected App          $app;
     protected SocketClient $client;
@@ -159,7 +159,7 @@ class SocketV2 implements LogHandlerInterface
             'css'  => '',
         ];
 
-        $tabid = $this->getClientArg('tabid');
+        $tabId = (int) $this->getClientArg('tabid');
 
         if (!$clientId = $this->getClientArg('client_id')) {
             $clientId = '';
@@ -169,10 +169,10 @@ class SocketV2 implements LogHandlerInterface
             //强制推送到多个client_id
             foreach ($this->allowForceClientIds as $forceClientId) {
                 $clientId = $forceClientId;
-                $this->sendToClient($tabid, $clientId, $trace, $forceClientId);
+                $this->sendToClient($tabId, $clientId, $trace, $forceClientId);
             }
         } else {
-            $this->sendToClient($tabid, $clientId, $trace, '');
+            $this->sendToClient($tabId, $clientId, $trace, '');
         }
 
         return true;
@@ -204,14 +204,13 @@ class SocketV2 implements LogHandlerInterface
 
     /**
      * 检测客户授权
-     * @return bool
      */
-    protected function check()
+    protected function check(): bool
     {
-        $tabid = $this->getClientArg('tabid');
+        $tabid = (int) $this->getClientArg('tabid');
 
         //是否记录日志的检查
-        if (!$tabid && !$this->config['force_client_ids']) {
+        if ($tabid === 0 && !$this->config['force_client_ids']) {
             return false;
         }
 
@@ -238,10 +237,8 @@ class SocketV2 implements LogHandlerInterface
 
     /**
      * 获取客户参数
-     * @param string $name
-     * @return string
      */
-    protected function getClientArg(string $name)
+    protected function getClientArg(string $name): string
     {
         if (!$this->app->exists('request')) {
             return '';
@@ -254,10 +251,18 @@ class SocketV2 implements LogHandlerInterface
             }
 
             if (!preg_match('/SocketLog\((.*?)\)/', $socketLog, $match)) {
-                $this->clientArg = ['tabid' => null, 'client_id' => null];
+                $this->clientArg = [
+                    'tabid' => '-1',
+                    'client_id' => null,
+                ];
                 return '';
             }
-            parse_str($match[1] ?? '', $this->clientArg);
+            $tmp = [];
+            parse_str($match[1] ?? '', $tmp);
+            $this->clientArg = [
+                'tabid' => $tmp['tabid'] ?? '-1',
+                'client_id' => $tmp['client_id'] ?? null,
+            ];
         }
 
         if (isset($this->clientArg[$name])) {

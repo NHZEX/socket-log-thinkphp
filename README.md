@@ -41,6 +41,6 @@
     // 端到端加密密钥（最少 8 位长度，不配置为空或移除）
     'e2e_encryption_key'  => 'CTZ4PH9JALN375ZXJDJ4',
     // 发送异常日志（必须确保目录可写，不配置为空或移除）
-    'socket_error_log' => runtime_path() . 'socklog_send.log',
+    'socket_error_log'    => runtime_path() . 'socklog_send.log',
 ]
 ```
