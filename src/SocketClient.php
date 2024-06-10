@@ -32,6 +32,7 @@ class SocketClient
     ];
 
     protected bool $enableCompress = false;
+    protected ?string $e2eId = null;
     protected string $e2eEncryptionKey = '';
     protected string $paramsMethod = 'path';
     protected ?string $loggerFile = null;
@@ -97,8 +98,17 @@ class SocketClient
         return $this->e2eEncryptionKey;
     }
 
-    public function setE2eEncryptionKey(string $e2eEncryptionKey): void
+    public function setE2eEncryptionKey(string $e2eEncryptionKey, ?string $e2eId): void
     {
+        if (
+            null !== $e2eId
+            && ($e2eId = trim($e2eId))
+            && strlen($e2eId) <= 128
+        ) {
+            $this->e2eId = $e2eId;
+        } else {
+            $this->e2eId = null;
+        }
         $this->e2eEncryptionKey = trim($e2eEncryptionKey);
     }
 
@@ -154,22 +164,26 @@ class SocketClient
     {
         $url = $this->buildUrl($clientId);
 
-        [$message, $contentType] = $this->createPayload($message, $clientId);
+        [$message, $contentType, $headers] = $this->buildPayload($message, $clientId);
 
         $ch  = curl_init();
 
-        $headers = [
-            "Content-Type: {$contentType}",
-        ];
+        $headers['Content-Type'] = $contentType;
+
         if ($this->getParamsMethod() === 'header') {
-            $headers[] = "X-Socket-Log-ClientId: {$clientId}";
+            $headers['X-Socket-Log-ClientId'] = $clientId;
         }
 
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $message);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+        $headersArr = [];
+        foreach ($headers as $key => $value) {
+            $headersArr[] = $key . ': ' . $value;
+        }
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headersArr);
 
         $options = $this->curlOptions;
         $options[CURLOPT_CONNECTTIMEOUT] ??= 1;
@@ -190,8 +204,10 @@ class SocketClient
         return $result;
     }
 
-    protected function createPayload(string $message, string $clientId): array
+    protected function buildPayload(string $message, string $clientId): array
     {
+        $headers = [];
+
         $needCompress = $this->isEnableCompress() && strlen($message) > 128;
 
         if (\extension_loaded('zlib') && $needCompress) {
@@ -204,7 +220,13 @@ class SocketClient
         $e2eEncryptionKey = $this->e2eEncryptionKey;
 
         if (\extension_loaded('openssl') && $e2eEncryptionKey && strlen($e2eEncryptionKey) >= 8) {
-            $add = hash('sha256', "SL-E2E_{$clientId}", true);
+            if ($this->e2eId) {
+                $addContent = "SL-E2E_{$this->e2eId}";
+                $headers['X-E2E-ID'] = $this->e2eId;
+            } else {
+                $addContent = "SL-E2E_{$clientId}";
+            }
+            $add = hash('sha256', $addContent, true);
             $message = $this->encryption($message, $e2eEncryptionKey, $add);
 
             $contentType = $needCompress
@@ -212,7 +234,7 @@ class SocketClient
                 : 'application/x-e2e-json';
         }
 
-        return [$message, $contentType];
+        return [$message, $contentType, $headers];
     }
 
     public function writeLog(string $action, string $clientId, string $message)

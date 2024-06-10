@@ -1,0 +1,7 @@
+/tests export-ignore
+/.github export-ignore
+.gitattributes export-ignore
+.php-cs-fixer.php export-ignore
+phpstan.neon export-ignore
+rector.php export-ignore
+README.md export-ignore

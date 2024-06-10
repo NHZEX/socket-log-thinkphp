@@ -35,6 +35,8 @@ class SocketV2 implements LogHandlerInterface
         ],
         // 压缩传输
         'compress'              => false,
+        // 端到端 ID, 尽量使用匿名字符串 (比如 uuid), 最大长度 127
+        'e2e_id'                => null,
         // 端到端密钥
         'e2e_encryption_key'    => '',
         // 发送异常日志（必须确保目录可写）
@@ -71,7 +73,7 @@ class SocketV2 implements LogHandlerInterface
         $this->client = SocketClient::fromUri($this->config['uri']);
         $this->client->setCurlOptions($this->config['curl_opts']);
         $this->client->setEnableCompress($this->config['compress'] ?? false);
-        $this->client->setE2eEncryptionKey($this->config['e2e_encryption_key'] ?? '');
+        $this->client->setE2eEncryptionKey($this->config['e2e_encryption_key'] ?? '', $this->config['e2e_id'] ?? null);
         $this->client->setParamsMethod($this->config['client_id_send_method'] ?? 'path');
         $this->client->setLogFilePath($this->config['socket_error_log'] ?? null);
     }
