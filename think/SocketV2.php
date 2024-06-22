@@ -248,24 +248,32 @@ class SocketV2 implements LogHandlerInterface
         }
 
         if (empty($this->clientArg)) {
-            $socketLog = $this->app->request->header('User-Agent');
-            if (empty($socketLog)) {
-                return '';
-            }
-
-            if (!preg_match('/SocketLog\((.*?)\)/', $socketLog, $match)) {
+            $clientId = $this->app->request->header('X-Socket-Log-Client-Id');
+            if ($clientId) {
                 $this->clientArg = [
                     'tabid' => '-1',
-                    'client_id' => null,
+                    'client_id' => $clientId,
                 ];
-                return '';
+            } else {
+                $socketLog = $this->app->request->header('User-Agent');
+                if (empty($socketLog)) {
+                    return '';
+                }
+
+                if (!preg_match('/SocketLog\((.*?)\)/', $socketLog, $match)) {
+                    $this->clientArg = [
+                        'tabid' => '-1',
+                        'client_id' => null,
+                    ];
+                    return '';
+                }
+                $tmp = [];
+                parse_str($match[1] ?? '', $tmp);
+                $this->clientArg = [
+                    'tabid' => $tmp['tabid'] ?? '-1',
+                    'client_id' => $tmp['client_id'] ?? null,
+                ];
             }
-            $tmp = [];
-            parse_str($match[1] ?? '', $tmp);
-            $this->clientArg = [
-                'tabid' => $tmp['tabid'] ?? '-1',
-                'client_id' => $tmp['client_id'] ?? null,
-            ];
         }
 
         if (isset($this->clientArg[$name])) {
