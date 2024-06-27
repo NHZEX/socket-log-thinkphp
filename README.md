@@ -1,5 +1,12 @@
 # 远程日志客户端 ThinkPHP
 
+thinkphp framework 内置 socket-log 增强替代品
+
+## 完整生态
+
+- [服务端 socket-log-server](https://github.com/nhzex/socket-log-server)
+- [浏览器扩展](https://github.com/nhzex/socket-log-chrome)
+
 ## 参数
 ```php
 [
