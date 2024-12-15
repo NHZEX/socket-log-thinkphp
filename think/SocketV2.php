@@ -41,6 +41,8 @@ class SocketV2 implements LogHandlerInterface
         'e2e_encryption_key'    => '',
         // 发送异常日志（必须确保目录可写）
         'socket_error_log' => null,
+        // 是否禁用 curl 复用
+        'curl_forbid_reuse' => false,
     ];
 
     protected array $css = [
@@ -76,6 +78,7 @@ class SocketV2 implements LogHandlerInterface
         $this->client->setE2eEncryptionKey($this->config['e2e_encryption_key'] ?? '', $this->config['e2e_id'] ?? null);
         $this->client->setParamsMethod($this->config['client_id_send_method'] ?? 'path');
         $this->client->setLogFilePath($this->config['socket_error_log'] ?? null);
+        $this->client->setCurlForbidReuse($this->config['curl_forbid_reuse'] ?? false);
     }
 
     public function save(array $log = []): bool

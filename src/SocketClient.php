@@ -36,6 +36,7 @@ class SocketClient
     protected string $e2eEncryptionKey = '';
     protected string $paramsMethod = 'path';
     protected ?string $loggerFile = null;
+    protected bool $curlForbidReuse = false; // 是否禁用 curl 复用
 
     public function __construct(string $protocol, string $host, int $port, string $path)
     {
@@ -66,6 +67,11 @@ class SocketClient
             (int) ($arr['port'] ?? 0),
             $arr['path'] ?? '',
         );
+    }
+
+    public function setCurlForbidReuse(bool $curlForbidReuse): void
+    {
+        $this->curlForbidReuse = $curlForbidReuse;
     }
 
     public function setLogFilePath(string $filepath)
@@ -178,6 +184,7 @@ class SocketClient
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $message);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FORBID_REUSE, $this->curlForbidReuse);
 
         $headersArr = [];
         foreach ($headers as $key => $value) {
