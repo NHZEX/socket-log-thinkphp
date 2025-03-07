@@ -11,7 +11,7 @@
         "php": "^7.4 | ^8",
         "ext-curl": "*",
         "ext-json": "*",
-        "topthink/framework": "^6.0.0 | ^8.0.0"
+        "topthink/framework": "^6.0 | ^8.0"
     },
     "require-dev": {
         "php-cs-fixer/shim": "^3.58"
