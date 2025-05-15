@@ -15,6 +15,7 @@
     },
     "require-dev": {
         "php-cs-fixer/shim": "^3.58",
+        "phpstan/phpstan": "^2",
         "rector/rector": "~2.0"
     },
     "suggest": {

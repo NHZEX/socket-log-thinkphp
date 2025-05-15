@@ -300,7 +300,7 @@ class SocketV2 implements LogHandlerInterface
                     return '';
                 }
                 $tmp = [];
-                parse_str($match[1] ?? '', $tmp);
+                parse_str($match[1], $tmp);
                 $this->clientArg = [
                     'tabid' => $tmp['tabid'] ?? '-1',
                     'client_id' => $tmp['client_id'] ?? null,
