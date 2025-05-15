@@ -86,7 +86,7 @@ class SocketV2 implements LogHandlerInterface
         $this->client->setCurlForbidReuse($this->config['curl_forbid_reuse'] ?? false);
 
         $version = ltrim(InstalledVersions::getPrettyVersion('topthink/framework'), 'v');
-        if (preg_match('~(\d+\.?)+~', $version)) {
+        if (preg_match('~^(\d+\.?)+$~', $version)) {
             $this->newImplement = (bool) version_compare($version, '8.1.2', '>');
         }
     }
