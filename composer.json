@@ -14,7 +14,8 @@
         "topthink/framework": "^6.0 | ^8.0"
     },
     "require-dev": {
-        "php-cs-fixer/shim": "^3.58"
+        "php-cs-fixer/shim": "^3.58",
+        "rector/rector": "~2.0"
     },
     "suggest": {
         "ext-openssl": "*",

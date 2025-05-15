@@ -308,10 +308,6 @@ class SocketV2 implements LogHandlerInterface
             }
         }
 
-        if (isset($this->clientArg[$name])) {
-            return $this->clientArg[$name];
-        }
-
-        return '';
+        return $this->clientArg[$name] ?? '';
     }
 }
