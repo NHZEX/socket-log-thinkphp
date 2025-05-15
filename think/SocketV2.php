@@ -6,6 +6,7 @@ namespace think\log\driver;
 
 use Composer\InstalledVersions;
 use Psr\Container\NotFoundExceptionInterface;
+use Psr\Log\LogLevel;
 use think\App;
 use think\contract\LogHandlerInterface;
 use Zxin\SocketLog\SocketClient;
@@ -54,6 +55,19 @@ class SocketV2 implements LogHandlerInterface
         'error'    => 'color:#f4006b;font-size:14px;',
         'page'     => 'color:#4169e1;background:#dcdcdc;',
         'big'      => 'font-size:20px;color:red;',
+    ];
+    protected array $css2 = [
+        LogLevel::DEBUG => 'background: rgba(100, 160, 255, 0.15); color: #2b6cb0; padding: 2px 6px; border-radius: 3px;',
+        LogLevel::INFO  => 'background: rgba(100, 200, 150, 0.15); color: #2a7d4f; padding: 2px 6px;',
+        LogLevel::WARNING  => 'background: rgba(255, 193, 7, 0.15); color: #b76e00; padding: 2px 6px;',
+        LogLevel::ERROR => 'background: rgba(255, 80, 80, 0.15); color: #c62828; padding: 2px 6px;',
+        LogLevel::EMERGENCY => 'background: rgba(150, 0, 50, 0.15); color: #6d001a; padding: 2px 6px;',
+        LogLevel::ALERT => 'background: rgba(255, 80, 80, 0.15); color: #c62828; padding: 2px 6px;',
+        LogLevel::CRITICAL => 'background: rgba(180, 0, 100, 0.15); color: #6a004d; padding: 2px 6px;',
+        LogLevel::NOTICE => 'background: rgba(0, 150, 200, 0.15); color: #005f7c; padding: 2px 6px;',
+        // 自定义
+        'route'  => 'info',
+        'request'  => 'info',
     ];
 
     protected array $allowForceClientIds = []; //配置强制推送且被授权的client_id
@@ -182,19 +196,34 @@ class SocketV2 implements LogHandlerInterface
                 ];
             }
         } else {
+            $logLevelSet = [
+                LogLevel::EMERGENCY,
+                LogLevel::ALERT,
+                LogLevel::CRITICAL,
+                LogLevel::ERROR,
+                LogLevel::WARNING,
+                LogLevel::NOTICE,
+                LogLevel::INFO,
+                LogLevel::DEBUG,
+            ];
+
             $trace[] = [
                 'type' => 'group',
-                'msg'  => 'message',
+                'msg'  => 'logs',
                 'css'  => '',
             ];
             foreach ($this->logReader($log, false) as [$type, $messages]) {
                 if (!is_string($messages)) {
                     $messages = var_export($messages, true);
                 }
+                $css = $this->css2[$type] ?? '';
+                if (in_array($css, $logLevelSet, true)) {
+                    $css = $this->css2[$css] ?? '';
+                }
                 $trace[] = [
                     'type' => 'log',
                     'msg'  => "[{$type}] {$messages}",
-                    'css'  => '',
+                    'css'  => $css,
                 ];
             }
             $trace[] = [
@@ -207,7 +236,7 @@ class SocketV2 implements LogHandlerInterface
         if ($this->config['show_included_files']) {
             $trace[] = [
                 'type' => 'groupCollapsed',
-                'msg'  => '[ file ]',
+                'msg'  => '[ included_files ]',
                 'css'  => '',
             ];
 
