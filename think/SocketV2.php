@@ -4,6 +4,7 @@ declare (strict_types=1);
 
 namespace think\log\driver;
 
+use Composer\InstalledVersions;
 use Psr\Container\NotFoundExceptionInterface;
 use think\App;
 use think\contract\LogHandlerInterface;
@@ -59,6 +60,10 @@ class SocketV2 implements LogHandlerInterface
 
     protected App          $app;
     protected SocketClient $client;
+    /**
+     * 新日志格式的兼容判定
+     */
+    protected ?bool $newImplement = null;
 
     public function __construct(App $app, array $config = [])
     {
@@ -79,6 +84,11 @@ class SocketV2 implements LogHandlerInterface
         $this->client->setParamsMethod($this->config['client_id_send_method'] ?? 'path');
         $this->client->setLogFilePath($this->config['socket_error_log'] ?? null);
         $this->client->setCurlForbidReuse($this->config['curl_forbid_reuse'] ?? false);
+
+        $version = ltrim(InstalledVersions::getPrettyVersion('topthink/framework'), 'v');
+        if (preg_match('~(\d+\.?)+~', $version)) {
+            $this->newImplement = (bool) version_compare($version, '8.1.2', '>');
+        }
     }
 
     public function save(array $log = []): bool
@@ -114,7 +124,13 @@ class SocketV2 implements LogHandlerInterface
 
         $expandLevel = array_flip($this->config['expand_level']);
 
+        // 是否启用兼容模式的备用判断
+        $newImplement = $this->newImplement ?? array_is_list($log);
+
         foreach ($log as $type => $val) {
+            if ($newImplement) {
+                [$type, $val] = $val;
+            }
             $trace[] = [
                 'type' => isset($expandLevel[$type]) ? 'group' : 'groupCollapsed',
                 'msg'  => '[ ' . $type . ' ]',
