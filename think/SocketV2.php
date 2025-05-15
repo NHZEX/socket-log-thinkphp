@@ -86,7 +86,7 @@ class SocketV2 implements LogHandlerInterface
      */
     protected ?bool $newImplement = null;
 
-    const LogLevelSet = [
+    public const LogLevelSet = [
         LogLevel::EMERGENCY,
         LogLevel::ALERT,
         LogLevel::CRITICAL,
@@ -200,7 +200,7 @@ class SocketV2 implements LogHandlerInterface
                     if (!is_string($msg)) {
                         $msg = var_export($msg, true);
                     }
-                    $msg = $format ? $this->formatMessage($format, $type, $msg) : "[{$type}] {$messages}";
+                    $msg = $format ? $this->formatMessage($format, $type, $msg) : "[{$type}] {$msg}";
                     $trace[] = [
                         'type' => 'log',
                         'msg'  => $msg,
