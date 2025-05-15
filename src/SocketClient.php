@@ -244,7 +244,7 @@ class SocketClient
         return [$message, $contentType, $headers];
     }
 
-    public function writeLog(string $action, string $clientId, string $message)
+    public function writeLog(string $action, string $clientId, string $message): void
     {
         if (null === $this->loggerFile) {
             return;

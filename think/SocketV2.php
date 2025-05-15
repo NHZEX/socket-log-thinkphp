@@ -215,12 +215,8 @@ class SocketV2 implements LogHandlerInterface
 
     /**
      * 发送给指定客户端
-     * @param  $tabid
-     * @param  $clientId
-     * @param  $logs
-     * @param  $forceClientId
      */
-    protected function sendToClient($tabId, $clientId, $logs, $forceClientId)
+    protected function sendToClient(int $tabId, string $clientId, array $logs, string $forceClientId): void
     {
         $logs = [
             'tabid'           => $tabId,
