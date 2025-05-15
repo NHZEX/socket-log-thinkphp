@@ -15,7 +15,11 @@ class SocketV2 implements LogHandlerInterface
 {
     protected array $config = [
         // 使用分组输出模式
-        'show_group'        => true,
+        'show_group'            => true,
+        // 日志输出格式化
+        'log_format'            => '[{date}][{level}] {message}',
+        // 时间格式
+        'time_format'           => \DATE_RFC3339,
         // socket 服务器连接地址
         'uri'                   => 'http://localhost:1116',
         // 是否显示加载的文件列表
@@ -44,9 +48,9 @@ class SocketV2 implements LogHandlerInterface
         // 端到端密钥
         'e2e_encryption_key'    => '',
         // 发送异常日志（必须确保目录可写）
-        'socket_error_log' => null,
+        'socket_error_log'      => null,
         // 是否禁用 curl 复用
-        'curl_forbid_reuse' => false,
+        'curl_forbid_reuse'     => false,
     ];
 
     protected array $css = [
@@ -57,29 +61,40 @@ class SocketV2 implements LogHandlerInterface
         'big'      => 'font-size:20px;color:red;',
     ];
     protected array $css2 = [
-        LogLevel::DEBUG => 'background: rgba(100, 160, 255, 0.15); color: #2b6cb0; padding: 2px 6px; border-radius: 3px;',
-        LogLevel::INFO  => 'background: rgba(100, 200, 150, 0.15); color: #2a7d4f; padding: 2px 6px;',
-        LogLevel::WARNING  => 'background: rgba(255, 193, 7, 0.15); color: #b76e00; padding: 2px 6px;',
-        LogLevel::ERROR => 'background: rgba(255, 80, 80, 0.15); color: #c62828; padding: 2px 6px;',
+        LogLevel::DEBUG     => 'background: rgba(100, 160, 255, 0.15); color: #2b6cb0; padding: 2px 6px; border-radius: 3px;',
+        LogLevel::INFO      => 'background: rgba(100, 200, 150, 0.15); color: #2a7d4f; padding: 2px 6px;',
+        LogLevel::WARNING   => 'background: rgba(255, 193, 7, 0.15); color: #b76e00; padding: 2px 6px;',
+        LogLevel::ERROR     => 'background: rgba(255, 80, 80, 0.15); color: #c62828; padding: 2px 6px;',
         LogLevel::EMERGENCY => 'background: rgba(150, 0, 50, 0.15); color: #6d001a; padding: 2px 6px;',
-        LogLevel::ALERT => 'background: rgba(255, 80, 80, 0.15); color: #c62828; padding: 2px 6px;',
-        LogLevel::CRITICAL => 'background: rgba(180, 0, 100, 0.15); color: #6a004d; padding: 2px 6px;',
-        LogLevel::NOTICE => 'background: rgba(0, 150, 200, 0.15); color: #005f7c; padding: 2px 6px;',
+        LogLevel::ALERT     => 'background: rgba(255, 80, 80, 0.15); color: #c62828; padding: 2px 6px;',
+        LogLevel::CRITICAL  => 'background: rgba(180, 0, 100, 0.15); color: #6a004d; padding: 2px 6px;',
+        LogLevel::NOTICE    => 'background: rgba(0, 150, 200, 0.15); color: #005f7c; padding: 2px 6px;',
         // 自定义
-        'route'  => 'info',
-        'request'  => 'info',
+        'route'             => 'info',
+        'request'           => 'info',
     ];
 
     protected array $allowForceClientIds = []; //配置强制推送且被授权的client_id
 
     private array $clientArg = [];
 
-    protected App          $app;
+    protected App $app;
     protected SocketClient $client;
     /**
      * 新日志格式的兼容判定
      */
     protected ?bool $newImplement = null;
+
+    const LogLevelSet = [
+        LogLevel::EMERGENCY,
+        LogLevel::ALERT,
+        LogLevel::CRITICAL,
+        LogLevel::ERROR,
+        LogLevel::WARNING,
+        LogLevel::NOTICE,
+        LogLevel::INFO,
+        LogLevel::DEBUG,
+    ];
 
     public function __construct(App $app, array $config = [])
     {
@@ -103,7 +118,7 @@ class SocketV2 implements LogHandlerInterface
 
         $version = ltrim(InstalledVersions::getPrettyVersion('topthink/framework'), 'v');
         if (preg_match('~^(\d+\.?)+$~', $version)) {
-            $this->newImplement = (bool) version_compare($version, '8.1.2', '>');
+            $this->newImplement = (bool)version_compare($version, '8.1.2', '>');
         }
     }
 
@@ -131,7 +146,6 @@ class SocketV2 implements LogHandlerInterface
                 }
             }
         }
-
     }
 
     protected function getCurrentUri(): string
@@ -196,33 +210,27 @@ class SocketV2 implements LogHandlerInterface
                 ];
             }
         } else {
-            $logLevelSet = [
-                LogLevel::EMERGENCY,
-                LogLevel::ALERT,
-                LogLevel::CRITICAL,
-                LogLevel::ERROR,
-                LogLevel::WARNING,
-                LogLevel::NOTICE,
-                LogLevel::INFO,
-                LogLevel::DEBUG,
-            ];
+            $format = trim($this->config['log_format'] ?? '');
 
             $trace[] = [
                 'type' => 'group',
                 'msg'  => 'logs',
                 'css'  => '',
             ];
-            foreach ($this->logReader($log, false) as [$type, $messages]) {
+            foreach ($this->logReader($log, false) as $item) {
+                [$type, $messages] = $item;
+                $ctx = $item[2] ?? null;
                 if (!is_string($messages)) {
                     $messages = var_export($messages, true);
                 }
                 $css = $this->css2[$type] ?? '';
-                if (in_array($css, $logLevelSet, true)) {
+                if (in_array($css, self::LogLevelSet, true)) {
                     $css = $this->css2[$css] ?? '';
                 }
+                $msg = $format ? $this->formatMessage($format, $type, $messages, $ctx) : "[{$type}] {$messages}";
                 $trace[] = [
                     'type' => 'log',
-                    'msg'  => "[{$type}] {$messages}",
+                    'msg'  => $msg,
                     'css'  => $css,
                 ];
             }
@@ -259,7 +267,7 @@ class SocketV2 implements LogHandlerInterface
             'css'  => '',
         ];
 
-        $tabId = (int) $this->getClientArg('tabid');
+        $tabId = (int)$this->getClientArg('tabid');
 
         if (!$clientId = $this->getClientArg('client_id')) {
             $clientId = '';
@@ -276,6 +284,21 @@ class SocketV2 implements LogHandlerInterface
         }
 
         return true;
+    }
+
+    protected function formatMessage(string $format, string $level, string $messages, ?array $context = null): string
+    {
+        /** @var \DateTimeInterface $date */
+        $date = $context["\0_t"] ?? null;
+
+        $replace = [
+            '{date}' => $date ? $date->format($this->config['time_format']) : '',
+            '{level}' => $level,
+            '{pid}' => getmypid(),
+            '{message}' => $messages,
+        ];
+
+        return strtr($format, $replace);
     }
 
     /**
@@ -303,7 +326,7 @@ class SocketV2 implements LogHandlerInterface
      */
     protected function check(): bool
     {
-        $tabid = (int) $this->getClientArg('tabid');
+        $tabid = (int)$this->getClientArg('tabid');
 
         //是否记录日志的检查
         if ($tabid === 0 && !$this->config['force_client_ids']) {
@@ -344,7 +367,7 @@ class SocketV2 implements LogHandlerInterface
             $clientId = $this->app->request->header('X-Socket-Log-Client-Id');
             if ($clientId) {
                 $this->clientArg = [
-                    'tabid' => '-1',
+                    'tabid'     => '-1',
                     'client_id' => $clientId,
                 ];
             } else {
@@ -355,7 +378,7 @@ class SocketV2 implements LogHandlerInterface
 
                 if (!preg_match('/SocketLog\((.*?)\)/', $socketLog, $match)) {
                     $this->clientArg = [
-                        'tabid' => '-1',
+                        'tabid'     => '-1',
                         'client_id' => null,
                     ];
                     return '';
@@ -363,7 +386,7 @@ class SocketV2 implements LogHandlerInterface
                 $tmp = [];
                 parse_str($match[1], $tmp);
                 $this->clientArg = [
-                    'tabid' => $tmp['tabid'] ?? '-1',
+                    'tabid'     => $tmp['tabid'] ?? '-1',
                     'client_id' => $tmp['client_id'] ?? null,
                 ];
             }
