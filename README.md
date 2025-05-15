@@ -22,13 +22,17 @@ thinkphp framework 内置 socket-log 增强替代品
     'allow_client_ids'    => ['my_develop'],
     // client_id 发送方法: path, query, header，推荐使用（query, header）兼容性更好
     'client_id_send_method' => 'path',
-    // 日志处理
+    // 日志处理（暂无作用）
     'processor'           => null,
-    // 关闭通道日志写入
+    // 关闭通道日志写入（暂无作用）
     'close'               => false,
-    // 日志输出格式化
-    'format'              => '[%s][%s] %s',
-    // 是否实时写入
+    // 使用分组输出模式
+    'show_group'            => true,
+    // 日志输出格式化，参数：{date}、{level}、{pid}、{message}
+    'log_format'            => '', // [{date}][{level}] {message}
+    // 时间格式，配置 log_format 后才有效
+    'time_format'           => \DATE_RFC3339,
+    // 是否实时写入（暂无作用）
     'realtime_write'      => false,
     // 默认展开节点
     'expand_level'        => ['debug'],

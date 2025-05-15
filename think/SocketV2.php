@@ -14,12 +14,6 @@ use Zxin\SocketLog\SocketClient;
 class SocketV2 implements LogHandlerInterface
 {
     protected array $config = [
-        // 使用分组输出模式
-        'show_group'            => true,
-        // 日志输出格式化
-        'log_format'            => '[{date}][{level}] {message}',
-        // 时间格式
-        'time_format'           => \DATE_RFC3339,
         // socket 服务器连接地址
         'uri'                   => 'http://localhost:1116',
         // 是否显示加载的文件列表
@@ -36,6 +30,12 @@ class SocketV2 implements LogHandlerInterface
         'expand_level'          => ['debug'],
         // 日志头渲染回调
         'format_head'           => null,
+        // 使用分组输出模式
+        'show_group'            => true,
+        // 日志输出格式化，参数：{date}、{level}、{pid}、{message}
+        'log_format'            => '', // [{date}][{level}] {message}
+        // 时间格式
+        'time_format'           => \DATE_RFC3339,
         // curl opt
         'curl_opts'             => [
             CURLOPT_CONNECTTIMEOUT => 1,
@@ -61,17 +61,18 @@ class SocketV2 implements LogHandlerInterface
         'big'      => 'font-size:20px;color:red;',
     ];
     protected array $css2 = [
-        LogLevel::DEBUG     => 'background: rgba(100, 160, 255, 0.15); color: #2b6cb0; padding: 2px 6px; border-radius: 3px;',
-        LogLevel::INFO      => 'background: rgba(100, 200, 150, 0.15); color: #2a7d4f; padding: 2px 6px;',
-        LogLevel::WARNING   => 'background: rgba(255, 193, 7, 0.15); color: #b76e00; padding: 2px 6px;',
-        LogLevel::ERROR     => 'background: rgba(255, 80, 80, 0.15); color: #c62828; padding: 2px 6px;',
-        LogLevel::EMERGENCY => 'background: rgba(150, 0, 50, 0.15); color: #6d001a; padding: 2px 6px;',
-        LogLevel::ALERT     => 'background: rgba(255, 80, 80, 0.15); color: #c62828; padding: 2px 6px;',
-        LogLevel::CRITICAL  => 'background: rgba(180, 0, 100, 0.15); color: #6a004d; padding: 2px 6px;',
-        LogLevel::NOTICE    => 'background: rgba(0, 150, 200, 0.15); color: #005f7c; padding: 2px 6px;',
+        LogLevel::DEBUG     => 'background: rgba(173, 216, 230, 0.15); color: #1e4d8c; padding: 2px 6px; padding: 2px 6px; border-radius: 3px;',
+        LogLevel::INFO      => 'background: rgba(144, 238, 144, 0.15); color: #206a3d; padding: 2px 6px;',
+        LogLevel::WARNING   => 'background: rgba(255, 228, 181, 0.15); color: #9c6e00; padding: 2px 6px;',
+        LogLevel::ERROR     => 'background: rgba(255, 192, 203, 0.15); color: #a31212; padding: 2px 6px;',
+        LogLevel::EMERGENCY => 'background: rgba(255, 182, 193, 0.15); color: #6a0016; padding: 2px 6px;',
+        LogLevel::ALERT     => 'background: rgba(255, 218, 185, 0.15); color: #cc5500; padding: 2px 6px;',
+        LogLevel::CRITICAL  => 'background: rgba(230, 190, 255, 0.15); color: #6a006a; padding: 2px 6px;',
+        LogLevel::NOTICE    => 'background: rgba(173, 216, 230, 0.15); color: #004a77; padding: 2px 6px;',
         // 自定义
         'route'             => 'info',
-        'request'           => 'info',
+        // 'request'           => 'info',
+        'sql'               => 'warning',
     ];
 
     protected array $allowForceClientIds = []; //配置强制推送且被授权的client_id
@@ -184,6 +185,8 @@ class SocketV2 implements LogHandlerInterface
             ];
         }
 
+        $format = trim($this->config['log_format'] ?? '');
+
         if ($this->config['show_group'] ?? true) {
             $expandLevel = array_flip($this->config['expand_level']);
 
@@ -197,6 +200,7 @@ class SocketV2 implements LogHandlerInterface
                     if (!is_string($msg)) {
                         $msg = var_export($msg, true);
                     }
+                    $msg = $format ? $this->formatMessage($format, $type, $msg) : "[{$type}] {$messages}";
                     $trace[] = [
                         'type' => 'log',
                         'msg'  => $msg,
@@ -210,8 +214,6 @@ class SocketV2 implements LogHandlerInterface
                 ];
             }
         } else {
-            $format = trim($this->config['log_format'] ?? '');
-
             $trace[] = [
                 'type' => 'group',
                 'msg'  => 'logs',
@@ -288,12 +290,18 @@ class SocketV2 implements LogHandlerInterface
 
     protected function formatMessage(string $format, string $level, string $messages, ?array $context = null): string
     {
-        /** @var \DateTimeInterface $date */
+        if (!str_contains($format, '{')) {
+            return "[{$level}] {$messages}";
+        }
+        /** @var \DateTimeInterface|null $date */
         $date = $context["\0_t"] ?? null;
+        /** @var int|null $index */
+        $index = $context["\0_i"] ?? null;
 
         $replace = [
             '{date}' => $date ? $date->format($this->config['time_format']) : '',
             '{level}' => $level,
+            '{index}' => $index,
             '{pid}' => getmypid(),
             '{message}' => $messages,
         ];
