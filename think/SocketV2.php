@@ -91,6 +91,25 @@ class SocketV2 implements LogHandlerInterface
         }
     }
 
+    protected function logGroupReader(array $log): \Generator
+    {
+        // 是否启用兼容模式的备用判断
+        $newImplement = $this->newImplement ?? array_is_list($log);
+
+        if ($newImplement) {
+            $group = [];
+            foreach ($log as [$type, $msg]) {
+                $group[$type][] = $msg;
+            }
+            yield from $group;
+        } else {
+            foreach ($log as $type => $val) {
+                yield $type => $val;
+            }
+        }
+
+    }
+
     public function save(array $log = []): bool
     {
         if (!$this->check()) {
@@ -109,7 +128,7 @@ class SocketV2 implements LogHandlerInterface
             if (!empty($this->config['format_head'])) {
                 try {
                     $currentUri = $this->app->invoke($this->config['format_head'], [$currentUri]);
-                } catch (NotFoundExceptionInterface $notFoundException) {
+                } /** @noinspection PhpRedundantCatchClauseInspection */ catch (NotFoundExceptionInterface $_) {
                     // Ignore exception
                 }
             }
@@ -124,20 +143,14 @@ class SocketV2 implements LogHandlerInterface
 
         $expandLevel = array_flip($this->config['expand_level']);
 
-        // 是否启用兼容模式的备用判断
-        $newImplement = $this->newImplement ?? array_is_list($log);
-
-        foreach ($log as $type => $val) {
-            if ($newImplement) {
-                [$type, $val] = $val;
-            }
+        foreach ($this->logGroupReader($log) as $type => $messages) {
             $trace[] = [
                 'type' => isset($expandLevel[$type]) ? 'group' : 'groupCollapsed',
                 'msg'  => '[ ' . $type . ' ]',
                 'css'  => $this->css[$type] ?? '',
             ];
 
-            foreach ($val as $msg) {
+            foreach ($messages as $msg) {
                 if (!is_string($msg)) {
                     $msg = var_export($msg, true);
                 }
@@ -218,7 +231,7 @@ class SocketV2 implements LogHandlerInterface
 
         $message = json_encode(
             $logs,
-            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR,
         );
 
         $this->client->send($message, $clientId);
