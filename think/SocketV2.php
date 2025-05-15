@@ -13,6 +13,8 @@ use Zxin\SocketLog\SocketClient;
 class SocketV2 implements LogHandlerInterface
 {
     protected array $config = [
+        // 使用分组输出模式
+        'show_group'        => true,
         // socket 服务器连接地址
         'uri'                   => 'http://localhost:1116',
         // 是否显示加载的文件列表
@@ -91,23 +93,50 @@ class SocketV2 implements LogHandlerInterface
         }
     }
 
-    protected function logGroupReader(array $log): \Generator
+    protected function logReader(array $log, bool $group): \Generator
     {
         // 是否启用兼容模式的备用判断
         $newImplement = $this->newImplement ?? array_is_list($log);
 
         if ($newImplement) {
-            $group = [];
-            foreach ($log as [$type, $msg]) {
-                $group[$type][] = $msg;
+            if ($group) {
+                $group = [];
+                foreach ($log as [$type, $msg]) {
+                    $group[$type][] = $msg;
+                }
+                yield from $group;
+            } else {
+                yield from $log;
             }
-            yield from $group;
         } else {
-            foreach ($log as $type => $val) {
-                yield $type => $val;
+            if ($group) {
+                yield from $log;
+            } else {
+                foreach ($log as $type => $msg) {
+                    yield [$type, $msg];
+                }
             }
         }
 
+    }
+
+    protected function getCurrentUri(): string
+    {
+        if ($this->app->exists('request')) {
+            $currentUri = $this->app->request->url(true);
+        } else {
+            $currentUri = 'cmd:' . implode(' ', $_SERVER['argv'] ?? []);
+        }
+
+        if (!empty($this->config['format_head'])) {
+            try {
+                $currentUri = $this->app->invoke($this->config['format_head'], [$currentUri]);
+            } /** @noinspection PhpRedundantCatchClauseInspection */ catch (NotFoundExceptionInterface $_) {
+                // Ignore exception
+            }
+        }
+
+        return $currentUri;
     }
 
     public function save(array $log = []): bool
@@ -119,48 +148,55 @@ class SocketV2 implements LogHandlerInterface
         $trace = [];
 
         if ($this->config['debug']) {
-            if ($this->app->exists('request')) {
-                $currentUri = $this->app->request->url(true);
-            } else {
-                $currentUri = 'cmd:' . implode(' ', $_SERVER['argv'] ?? []);
-            }
-
-            if (!empty($this->config['format_head'])) {
-                try {
-                    $currentUri = $this->app->invoke($this->config['format_head'], [$currentUri]);
-                } /** @noinspection PhpRedundantCatchClauseInspection */ catch (NotFoundExceptionInterface $_) {
-                    // Ignore exception
-                }
-            }
-
             // 基本信息
             $trace[] = [
                 'type' => 'group',
-                'msg'  => $currentUri,
+                'msg'  => $this->getCurrentUri(),
                 'css'  => $this->css['page'],
             ];
         }
 
-        $expandLevel = array_flip($this->config['expand_level']);
+        if ($this->config['show_group'] ?? true) {
+            $expandLevel = array_flip($this->config['expand_level']);
 
-        foreach ($this->logGroupReader($log) as $type => $messages) {
-            $trace[] = [
-                'type' => isset($expandLevel[$type]) ? 'group' : 'groupCollapsed',
-                'msg'  => '[ ' . $type . ' ]',
-                'css'  => $this->css[$type] ?? '',
-            ];
-
-            foreach ($messages as $msg) {
-                if (!is_string($msg)) {
-                    $msg = var_export($msg, true);
+            foreach ($this->logReader($log, true) as $type => $messages) {
+                $trace[] = [
+                    'type' => isset($expandLevel[$type]) ? 'group' : 'groupCollapsed',
+                    'msg'  => '[ ' . $type . ' ]',
+                    'css'  => $this->css[$type] ?? '',
+                ];
+                foreach ($messages as $msg) {
+                    if (!is_string($msg)) {
+                        $msg = var_export($msg, true);
+                    }
+                    $trace[] = [
+                        'type' => 'log',
+                        'msg'  => $msg,
+                        'css'  => '',
+                    ];
                 }
                 $trace[] = [
-                    'type' => 'log',
-                    'msg'  => $msg,
+                    'type' => 'groupEnd',
+                    'msg'  => '',
                     'css'  => '',
                 ];
             }
-
+        } else {
+            $trace[] = [
+                'type' => 'group',
+                'msg'  => 'message',
+                'css'  => '',
+            ];
+            foreach ($this->logReader($log, false) as [$type, $messages]) {
+                if (!is_string($messages)) {
+                    $messages = var_export($messages, true);
+                }
+                $trace[] = [
+                    'type' => 'log',
+                    'msg'  => "[{$type}] {$messages}",
+                    'css'  => '',
+                ];
+            }
             $trace[] = [
                 'type' => 'groupEnd',
                 'msg'  => '',
