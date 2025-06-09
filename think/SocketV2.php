@@ -9,6 +9,7 @@ use Psr\Container\NotFoundExceptionInterface;
 use Psr\Log\LogLevel;
 use think\App;
 use think\contract\LogHandlerInterface;
+use think\event\LogRecord;
 use Zxin\SocketLog\SocketClient;
 
 class SocketV2 implements LogHandlerInterface
@@ -123,27 +124,30 @@ class SocketV2 implements LogHandlerInterface
         }
     }
 
-    protected function logReader(array $log, bool $group): \Generator
+    protected function logReader(array $logs, bool $group): \Generator
     {
         // 是否启用兼容模式的备用判断
-        $newImplement = $this->newImplement ?? array_is_list($log);
+        $newImplement = $this->newImplement ?? array_is_list($logs);
 
         if ($newImplement) {
             if ($group) {
                 $group = [];
-                foreach ($log as [$type, $msg]) {
-                    $group[$type][] = $msg;
+                foreach ($logs as $log) {
+                    /** @var LogRecord $log */
+                    $group[$log->type][] = $log;
                 }
                 yield from $group;
             } else {
-                yield from $log;
+                yield from $logs;
             }
         } else {
             if ($group) {
-                yield from $log;
+                foreach ($logs as $type => $msgLines) {
+                    yield $type => array_map(fn ($msgLine) => new LogRecord($type, $msgLine), $msgLines);
+                }
             } else {
-                foreach ($log as $type => $msg) {
-                    yield [$type, $msg];
+                foreach ($logs as $type => $msg) {
+                    yield new LogRecord($type, $msg);
                 }
             }
         }
@@ -196,9 +200,9 @@ class SocketV2 implements LogHandlerInterface
                     'msg'  => '[ ' . $type . ' ]',
                     'css'  => $this->css[$type] ?? '',
                 ];
-                foreach ($messages as $msg) {
-                    $msg = $this->normalizeMessage($msg);
-                    $msg = $format ? $this->formatMessage($format, $type, $msg) : "[{$type}] {$msg}";
+                foreach ($messages as $logRecord) {
+                    /** @var LogRecord $logRecord */
+                    $msg = $format ? $this->formatMessage($format, $logRecord) : "[{$type}] {$this->normalizeMessage($logRecord->message)}";
                     $trace[] = [
                         'type' => 'log',
                         'msg'  => $msg,
@@ -218,14 +222,14 @@ class SocketV2 implements LogHandlerInterface
                 'css'  => '',
             ];
             foreach ($this->logReader($log, false) as $item) {
-                [$type, $messages] = $item;
-                $ctx = $item[2] ?? null;
-                $messages = $this->normalizeMessage($messages);
+                /** @var LogRecord $item */
+                $type = $item->type;
                 $css = $this->css2[$type] ?? '';
                 if (in_array($css, self::LogLevelSet, true)) {
                     $css = $this->css2[$css] ?? '';
                 }
-                $msg = $format ? $this->formatMessage($format, $type, $messages, $ctx) : "[{$type}] {$messages}";
+
+                $msg = $format ? $this->formatMessage($format, $item) : "[{$type}] {$this->normalizeMessage($item->message)}";
                 $trace[] = [
                     'type' => 'log',
                     'msg'  => $msg,
@@ -301,20 +305,20 @@ class SocketV2 implements LogHandlerInterface
         return $message;
     }
 
-    protected function formatMessage(string $format, string $level, string $messages, ?array $context = null): string
+    protected function formatMessage(string $format, LogRecord $logRecord): string
     {
+        $level = $logRecord->type;
+        $messages = $this->normalizeMessage($logRecord->message);
+
         if (!str_contains($format, '{')) {
             return "[{$level}] {$messages}";
         }
         /** @var \DateTimeInterface|null $date */
-        $date = $context["\0_t"] ?? null;
-        /** @var int|null $index */
-        $index = $context["\0_i"] ?? null;
+        $date = $logRecord->time ?? null;
 
         $replace = [
             '{date}' => $date ? $date->format($this->config['time_format']) : '',
             '{level}' => $level,
-            '{index}' => $index,
             '{pid}' => getmypid(),
             '{message}' => $messages,
         ];
