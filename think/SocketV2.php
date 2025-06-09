@@ -197,9 +197,7 @@ class SocketV2 implements LogHandlerInterface
                     'css'  => $this->css[$type] ?? '',
                 ];
                 foreach ($messages as $msg) {
-                    if (!is_string($msg)) {
-                        $msg = var_export($msg, true);
-                    }
+                    $msg = $this->normalizeMessage($msg);
                     $msg = $format ? $this->formatMessage($format, $type, $msg) : "[{$type}] {$msg}";
                     $trace[] = [
                         'type' => 'log',
@@ -222,9 +220,7 @@ class SocketV2 implements LogHandlerInterface
             foreach ($this->logReader($log, false) as $item) {
                 [$type, $messages] = $item;
                 $ctx = $item[2] ?? null;
-                if (!is_string($messages)) {
-                    $messages = var_export($messages, true);
-                }
+                $messages = $this->normalizeMessage($messages);
                 $css = $this->css2[$type] ?? '';
                 if (in_array($css, self::LogLevelSet, true)) {
                     $css = $this->css2[$css] ?? '';
@@ -286,6 +282,23 @@ class SocketV2 implements LogHandlerInterface
         }
 
         return true;
+    }
+
+    protected function normalizeMessage($message): string
+    {
+        if (!\is_string($message)) {
+            if ((is_object($message) && method_exists($message, '__toString')) || $message instanceof \Stringable) {
+                $message = (string) $message;
+            } else {
+                try {
+                    $message = var_export($message, true);
+                } catch (\Throwable $e) {
+                    $message = '[Unable to cast to string]';
+                }
+            }
+        }
+
+        return $message;
     }
 
     protected function formatMessage(string $format, string $level, string $messages, ?array $context = null): string
