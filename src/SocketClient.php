@@ -38,6 +38,7 @@ class SocketClient
     protected string $e2eEncryptionKey = '';
     protected string $paramsMethod = 'path';
     protected ?string $loggerFile = null;
+    protected ?bool $enableCurlShare = true;
     protected bool $curlForbidReuse = false; // 是否禁用 curl 复用
     private bool $isInitialized = false;
 
@@ -72,9 +73,20 @@ class SocketClient
         );
     }
 
-    private function initHandles(): void
+    public function setEnableCurlShare(?bool $enableCurlShare): void
     {
-        if (!$this->isInitialized) {
+        $this->enableCurlShare = $enableCurlShare;
+
+        // 如果已经初始化，则关闭连接
+        if ($this->isInitialized && !$enableCurlShare) {
+            $this->isInitialized = false;
+            $this->closeHandles();
+        }
+    }
+
+    private function initShareHandles(): void
+    {
+        if (!$this->isInitialized && $this->enableCurlShare) {
             // 初始化共享句柄
             $this->shareHandle = curl_share_init();
             curl_share_setopt($this->shareHandle, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
@@ -202,7 +214,8 @@ class SocketClient
      */
     public function send(string $message, string $clientId)
     {
-        $this->initHandles();
+        $this->initShareHandles();
+
         $url = $this->buildUrl($clientId);
 
         [$message, $contentType, $headers] = $this->buildPayload($message, $clientId);
@@ -354,14 +367,21 @@ class SocketClient
         }
     }
 
-    public function __destruct()
+    private function closeHandles(): void
     {
         if ($this->curlHandle) {
             curl_close($this->curlHandle);
+            $this->curlHandle = null;
         }
 
         if ($this->shareHandle) {
             curl_share_close($this->shareHandle);
+            $this->shareHandle = null;
         }
+    }
+
+    public function __destruct()
+    {
+        $this->closeHandles();
     }
 }
