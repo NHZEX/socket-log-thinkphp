@@ -6,6 +6,8 @@ namespace Zxin\SocketLog;
 
 class SocketClient
 {
+    private $shareHandle;
+    private $curlHandle;
     protected string $protocol;
     protected string $host;
     protected int    $port;
@@ -37,6 +39,7 @@ class SocketClient
     protected string $paramsMethod = 'path';
     protected ?string $loggerFile = null;
     protected bool $curlForbidReuse = false; // 是否禁用 curl 复用
+    private bool $isInitialized = false;
 
     public function __construct(string $protocol, string $host, int $port, string $path)
     {
@@ -67,6 +70,37 @@ class SocketClient
             (int) ($arr['port'] ?? 0),
             $arr['path'] ?? '',
         );
+    }
+
+    private function initHandles(): void
+    {
+        if (!$this->isInitialized) {
+            // 初始化共享句柄
+            $this->shareHandle = curl_share_init();
+            curl_share_setopt($this->shareHandle, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
+            curl_share_setopt($this->shareHandle, CURLSHOPT_SHARE, CURL_LOCK_DATA_SSL_SESSION);
+            curl_share_setopt($this->shareHandle, CURLSHOPT_SHARE, CURL_LOCK_DATA_CONNECT);
+
+            // 初始化curl句柄
+            $this->curlHandle = curl_init();
+            curl_setopt($this->curlHandle, CURLOPT_SHARE, $this->shareHandle);
+
+            // 设置一些固定的优化选项
+            curl_setopt($this->curlHandle, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($this->curlHandle, CURLOPT_POST, true);
+
+            // 启用keep-alive，这是关键优化点
+            curl_setopt($this->curlHandle, CURLOPT_TCP_KEEPALIVE, 1);
+            curl_setopt($this->curlHandle, CURLOPT_TCP_KEEPIDLE, 120);
+            curl_setopt($this->curlHandle, CURLOPT_TCP_KEEPINTVL, 60);
+
+            // 启用HTTP/2（如果服务器支持）
+            if (defined('CURL_HTTP_VERSION_2_0')) {
+                curl_setopt($this->curlHandle, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
+            }
+
+            $this->isInitialized = true;
+        }
     }
 
     public function setCurlForbidReuse(bool $curlForbidReuse): void
@@ -168,17 +202,18 @@ class SocketClient
      */
     public function send(string $message, string $clientId)
     {
+        $this->initHandles();
         $url = $this->buildUrl($clientId);
 
         [$message, $contentType, $headers] = $this->buildPayload($message, $clientId);
-
-        $ch  = curl_init();
 
         $headers['Content-Type'] = $contentType;
 
         if ($this->getParamsMethod() === 'header') {
             $headers['X-Socket-Log-ClientId'] = $clientId;
         }
+
+        $ch = $this->curlHandle ?? curl_init();
 
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_POST, true);
@@ -205,7 +240,9 @@ class SocketClient
         $result = curl_exec($ch);
 
         if (false === $result) {
-            $this->writeLog('error', $clientId, curl_error($ch));
+            $error = curl_error($ch);
+            $errno = curl_errno($ch);
+            $this->writeLog('error', $clientId, "Curl error ($errno): $error");
         }
 
         return $result;
@@ -274,5 +311,57 @@ class SocketClient
         }
 
         return $iv . $ciphertext . $tag;
+    }
+
+    /**
+     * 获取连接信息
+     */
+    public function getConnectionInfo(): ?array
+    {
+        if (!$this->curlHandle) {
+            return null;
+        }
+
+        return [
+            'total_time' => curl_getinfo($this->curlHandle, CURLINFO_TOTAL_TIME),
+            'connect_time' => curl_getinfo($this->curlHandle, CURLINFO_CONNECT_TIME),
+            'num_connects' => curl_getinfo($this->curlHandle, CURLINFO_NUM_CONNECTS),
+            'ssl_verifyresult' => curl_getinfo($this->curlHandle, CURLINFO_SSL_VERIFYRESULT),
+            'http_code' => curl_getinfo($this->curlHandle, CURLINFO_HTTP_CODE),
+            'url' => curl_getinfo($this->curlHandle, CURLINFO_EFFECTIVE_URL),
+        ];
+    }
+
+    /**
+     * 重置连接
+     */
+    public function resetConnection(): void
+    {
+        if ($this->curlHandle) {
+            curl_reset($this->curlHandle);
+            curl_setopt($this->curlHandle, CURLOPT_SHARE, $this->shareHandle);
+
+            // 重新设置基本选项
+            curl_setopt($this->curlHandle, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($this->curlHandle, CURLOPT_POST, true);
+            curl_setopt($this->curlHandle, CURLOPT_TCP_KEEPALIVE, 1);
+            curl_setopt($this->curlHandle, CURLOPT_TCP_KEEPIDLE, 120);
+            curl_setopt($this->curlHandle, CURLOPT_TCP_KEEPINTVL, 60);
+
+            if (defined('CURL_HTTP_VERSION_2_0')) {
+                curl_setopt($this->curlHandle, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
+            }
+        }
+    }
+
+    public function __destruct()
+    {
+        if ($this->curlHandle) {
+            curl_close($this->curlHandle);
+        }
+
+        if ($this->shareHandle) {
+            curl_share_close($this->shareHandle);
+        }
     }
 }
