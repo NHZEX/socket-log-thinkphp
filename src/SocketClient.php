@@ -221,6 +221,8 @@ class SocketClient
         [$message, $contentType, $headers] = $this->buildPayload($message, $clientId);
 
         $headers['Content-Type'] = $contentType;
+        $headers['Connection'] = 'Keep-Alive';
+        $headers['Expect'] = ''; // 禁用 100-continue
 
         if ($this->getParamsMethod() === 'header') {
             $headers['X-Socket-Log-ClientId'] = $clientId;
@@ -358,8 +360,8 @@ class SocketClient
             curl_setopt($this->curlHandle, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($this->curlHandle, CURLOPT_POST, true);
             curl_setopt($this->curlHandle, CURLOPT_TCP_KEEPALIVE, 1);
-            curl_setopt($this->curlHandle, CURLOPT_TCP_KEEPIDLE, 120);
-            curl_setopt($this->curlHandle, CURLOPT_TCP_KEEPINTVL, 60);
+            curl_setopt($this->curlHandle, CURLOPT_TCP_KEEPIDLE, 60);
+            curl_setopt($this->curlHandle, CURLOPT_TCP_KEEPINTVL, 45);
 
             if (defined('CURL_HTTP_VERSION_2_0')) {
                 curl_setopt($this->curlHandle, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
