@@ -309,7 +309,7 @@ class SocketV2 implements LogHandlerInterface
         if (!str_contains($format, '{')) {
             return "[{$level}] {$messages}";
         }
-        /** @var \DateTimeInterface|null $date */
+        /** @var \DateTimeImmutable|null $date */
         $date = $logRecord->time ?? null;
 
         $replace = [
