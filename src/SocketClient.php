@@ -6,8 +6,8 @@ namespace Zxin\SocketLog;
 
 class SocketClient
 {
-    private $shareHandle;
-    private $curlHandle;
+    private ?\CurlShareHandle $shareHandle;
+    private ?\CurlHandle $curlHandle;
     protected string $protocol;
     protected string $host;
     protected int    $port;
@@ -371,15 +371,8 @@ class SocketClient
 
     private function closeHandles(): void
     {
-        if ($this->curlHandle) {
-            curl_close($this->curlHandle);
-            $this->curlHandle = null;
-        }
-
-        if ($this->shareHandle) {
-            curl_share_close($this->shareHandle);
-            $this->shareHandle = null;
-        }
+        $this->curlHandle = null;
+        $this->shareHandle = null;
     }
 
     public function __destruct()

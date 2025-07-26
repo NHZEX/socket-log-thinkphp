@@ -8,10 +8,9 @@
         }
     ],
     "require": {
-        "php": "^7.4 | ^8",
+        "php": ">=8",
         "ext-curl": "*",
         "ext-json": "*",
-        "symfony/polyfill-php80": "*",
         "topthink/framework": "^6.0 | ^8.0"
     },
     "require-dev": {
