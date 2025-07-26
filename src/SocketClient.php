@@ -6,8 +6,8 @@ namespace Zxin\SocketLog;
 
 class SocketClient
 {
-    private ?\CurlShareHandle $shareHandle;
-    private ?\CurlHandle $curlHandle;
+    private ?\CurlShareHandle $shareHandle = null;
+    private ?\CurlHandle $curlHandle = null;
     protected string $protocol;
     protected string $host;
     protected int    $port;

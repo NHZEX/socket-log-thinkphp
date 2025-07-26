@@ -79,8 +79,6 @@ class SocketV2 implements LogHandlerInterface
     protected array $allowForceClientIds = []; //配置强制推送且被授权的client_id
 
     private array $clientArg = [];
-
-    protected App $app;
     protected SocketClient $client;
     /**
      * 新日志格式的兼容判定
@@ -98,16 +96,14 @@ class SocketV2 implements LogHandlerInterface
         LogLevel::DEBUG,
     ];
 
-    public function __construct(App $app, array $config = [])
+    public function __construct(protected App $app, array $config = [])
     {
-        $this->app = $app;
-
         if (!empty($config)) {
             $this->config = array_merge($this->config, $config);
         }
 
         if (!isset($config['debug'])) {
-            $this->config['debug'] = $app->isDebug();
+            $this->config['debug'] = $this->app->isDebug();
         }
 
         $this->client = SocketClient::fromUri($this->config['uri']);
@@ -164,7 +160,7 @@ class SocketV2 implements LogHandlerInterface
         if (!empty($this->config['format_head'])) {
             try {
                 $currentUri = $this->app->invoke($this->config['format_head'], [$currentUri]);
-            } /** @noinspection PhpRedundantCatchClauseInspection */ catch (NotFoundExceptionInterface $_) {
+            } /** @noinspection PhpRedundantCatchClauseInspection */ catch (NotFoundExceptionInterface) {
                 // Ignore exception
             }
         }
@@ -296,7 +292,7 @@ class SocketV2 implements LogHandlerInterface
             } else {
                 try {
                     $message = var_export($message, true);
-                } catch (\Throwable $e) {
+                } catch (\Throwable) {
                     $message = '[Unable to cast to string]';
                 }
             }
